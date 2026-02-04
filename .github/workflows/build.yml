@@ -91,7 +91,6 @@ jobs:
             ${{ matrix.shield }}-${{ matrix.board }}-zmk-artsey.uf2
         continue-on-error: true
 
-  jobs:
   release:
     runs-on: ubuntu-latest
     name: Create Release
