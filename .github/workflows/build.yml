@@ -91,6 +91,7 @@ jobs:
             ${{ matrix.shield }}-${{ matrix.board }}-zmk-artsey.uf2
         continue-on-error: true
 
+  jobs:
   release:
     runs-on: ubuntu-latest
     name: Create Release
@@ -105,7 +106,7 @@ jobs:
         shell: bash
         run: |
           {
-            echo "release_text<<'EOF'"
+            echo "release_text<<EOF"
             echo "<b>Precompiled firmware files for ARTSEY</b><br><br>"
             echo "Download a firmware file by expanding \"Assets\", right clicking, and choosing \"Save File As\" or \"Save Link As\"."
             echo "<br>${{ github.event.inputs.releaseBody }}"
@@ -119,17 +120,32 @@ jobs:
         with:
           path: release
 
+      - name: Ensure release directory exists
+        run: mkdir -p release
+
       - name: List files to include in release
         if: always()
-        run: ls -R release/
+        run: |
+          if [ -d "release" ]; then
+            ls -R release/
+          else
+            echo "No artifacts downloaded or release/ directory is missing."
+          fi
 
       - name: Create zip files directory for individual board assets
         if: always()
-        run: mkdir zips
+        run: mkdir -p zips
 
       - name: Zip all firmware files for release
         if: always()
-        run: cd release && for folder in ./*; do echo $folder; zip -r ../zips/${folder}.zip ${folder}/; done && cd ..
+        run: |
+          cd release && \
+          for folder in ./*; do
+            if [ -d "$folder" ]; then 
+              echo $folder; 
+              zip -r ../zips/${folder##*/}.zip "${folder}/";
+            fi;
+          done && cd ..
 
       - name: Create release
         uses: ncipollo/release-action@v1
