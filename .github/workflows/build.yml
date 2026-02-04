@@ -77,9 +77,10 @@ jobs:
             shield: cradio_artsey_thumb_right
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
       - name: Cache west modules
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         env:
           cache-name: cache-zephyr-modules
         with:
@@ -96,12 +97,14 @@ jobs:
             ${{ runner.os }}-
         timeout-minutes: 2
         continue-on-error: true
+
       - name: Initialize workspace (west init)
         run: west init -l config
       - name: Update modules (west update)
         run: west update
       - name: Export Zephyr CMake package (west zephyr-export)
         run: west zephyr-export
+
       - name: Prepare variables
         id: variables
         run: |
@@ -113,16 +116,21 @@ jobs:
             ARTIFACT_NAME="${{ matrix.board }}-zmk-artsey"
           fi
 
-          echo ::set-output name=shield-arg::${SHIELD_ARG}
-          echo ::set-output name=artifact-name::${ARTIFACT_NAME}
+          {
+            echo "shield-arg=${SHIELD_ARG}"
+            echo "artifact-name=${ARTIFACT_NAME}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build (west build)
         run: west build -s zmk/app -b ${{ matrix.board }} -- ${{ steps.variables.outputs.shield-arg }} -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
+
       - name: ARTSEY implementation dtsi file
         if: always()
         run: cat -n config/artsey.dtsi
       - name: Generated DTS file
         if: always()
         run: cat -n build/zephyr/${{ matrix.board }}.dts.pre.tmp
+
       - name: Prep artifact (artsey.dtsi)
         run: cp config/artsey.dtsi ./artsey.dtsi
       - name: Prep artifact (${{ matrix.shield }}-${{ matrix.board }}.dts.pre.tmp)
@@ -131,16 +139,18 @@ jobs:
         run: cp build/zephyr/zmk.hex ${{ matrix.shield }}-${{ matrix.board }}-zmk-artsey.hex
       - name: Prep artifact (${{ matrix.shield }}-${{ matrix.board }}-zmk-artsey.uf2)
         run: cp build/zephyr/zmk.uf2 ${{ matrix.shield }}-${{ matrix.board }}-zmk-artsey.uf2
+
       - name: Archive artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: '${{ steps.variables.outputs.artifact-name }}'
+          name: ${{ steps.variables.outputs.artifact-name }}
           path: |
             artsey.dtsi
             ${{ matrix.shield }}-${{ matrix.board }}.dts.pre.tmp
             ${{ matrix.shield }}-${{ matrix.board }}-zmk-artsey.hex
             ${{ matrix.shield }}-${{ matrix.board }}-zmk-artsey.uf2
         continue-on-error: true
+
   release:
     runs-on: ubuntu-latest
     name: Create Release
@@ -148,28 +158,39 @@ jobs:
     steps:
       - name: Get current date/time
         id: date
-        run: echo "::set-output name=date::$(date +'%Y%m%d-%H%M')"
+        run: echo "date=$(date +'%Y%m%d-%H%M')" >> "$GITHUB_OUTPUT"
+
       - name: Generate release text
         id: release_text
-        run: >
-          echo "::set-output name=release_text::$(echo '<b>Precompiled firmware files for ARTSEY</b><br><br>
-          Download a firmware file by expanding "Assets", right clicking, and choosing "Save File As" or "Save Link As".
-          <br>${{ github.event.inputs.releaseBody }}
-          <br>Released on ${{ steps.date.outputs.date }}.
-          <br><br>${{ steps.docker_build.outputs.commits }}')"
+        shell: bash
+        run: |
+          {
+            echo "release_text<<'EOF'"
+            echo "<b>Precompiled firmware files for ARTSEY</b><br><br>"
+            echo "Download a firmware file by expanding \"Assets\", right clicking, and choosing \"Save File As\" or \"Save Link As\"."
+            echo "<br>${{ github.event.inputs.releaseBody }}"
+            echo "<br>Released on ${{ steps.date.outputs.date }}."
+            echo "<br><br>${{ steps.docker_build.outputs.commits }}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Download build artifacts for release
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           path: release
+
       - name: List files to include in release
         if: always()
         run: ls -R release/
+
       - name: Create zip files directory for individual board assets
         if: always()
         run: mkdir zips
+
       - name: Zip all firmware files for release
         if: always()
         run: cd release && for folder in ./*; do echo $folder; zip -r ../zips/${folder}.zip ${folder}/; done && cd ..
+
       - name: Create release
         uses: ncipollo/release-action@v1
         with:
