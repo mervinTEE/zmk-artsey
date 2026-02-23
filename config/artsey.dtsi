@@ -151,9 +151,9 @@
 			label = "Custom";                                          \
 			bindings = <                                               \
 				LEADING_NONES                                          \
-				&kp C_MUTE &none   &kp C_VOL_UP  &kp PSCRN           \
+				&kp C_MUTE &kp INS   &kp C_VOL_UP  &none               \
 				MIDDLE_NONES                                           \
-				&ext_power EP_OFF  &ext_power EP_ON &kp C_VOL_DN  &mo LAYER_ID_CUSTOM \
+				&sk RSHFT  &kp PSCRN &kp C_VOL_DN  &mo LAYER_ID_CUSTOM \
 				TRAILING_NONES                                         \
 			>;                                                         \
 		};
